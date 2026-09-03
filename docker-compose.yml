@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: studyflow-app
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - DATABASE_URL=file:./dev.db
+      - JWT_SECRET=studyflow-super-secret-jwt-key-for-docker-2026
+      - JWT_EXPIRES_IN=7d
+      - NODE_ENV=production
+    volumes:
+      - studyflow-data:/app/backend/prisma
+    restart: unless-stopped
+
+volumes:
+  studyflow-data:
