@@ -1,6 +1,6 @@
 # 🎓 StudyFlow - Student Productivity & Assignment Manager
 
-[![CI Pipeline](https://github.com/studyflow/studyflow/actions/workflows/ci.yml/badge.svg)](https://github.com/studyflow/studyflow/actions)
+[![CI Pipeline](https://github.com/revanthkumar-git/test/actions/workflows/ci.yml/badge.svg)](https://github.com/revanthkumar-git/test/actions)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19.0-61DAFB.svg)](https://react.dev/)
 [![Express](https://img.shields.io/badge/Express-4.21-lightgrey.svg)](https://expressjs.com/)
@@ -81,17 +81,17 @@
 - **Node.js** (v18 or higher, tested on Node v20 & v24 LTS)
 - **npm** (v9 or higher)
 
-### Option 1: Run Locally (Fastest)
+### Running Locally
 
 1. **Clone the repository:**
    ```bash
-   git clone <repo-url>
-   cd sample
+   git clone https://github.com/revanthkumar-git/test.git
+   cd test
    ```
 
 2. **Setup Backend:**
    ```bash
-   cd backend
+   cd StudyFlow/backend
    npm install
    npx prisma generate
    npx prisma db push
@@ -109,21 +109,21 @@
    - **Mode A (Development with Hot Reload):**
      In terminal 1 (backend):
      ```bash
-     cd backend
+     cd StudyFlow/backend
      npm run dev
      ```
      In terminal 2 (frontend):
      ```bash
-     cd frontend
+     cd StudyFlow/frontend
      npm run dev
      ```
      Open `http://localhost:5173` in your browser.
 
    - **Mode B (Unified Production Server):**
      ```bash
-     npm run build --prefix frontend
-     npm run build --prefix backend
-     node backend/dist/server.js
+     npm run build --prefix StudyFlow/frontend
+     npm run build --prefix StudyFlow/backend
+     node StudyFlow/backend/dist/server.js
      ```
      Open `http://localhost:5000` in your browser. Both API and Frontend are served on port 5000!
 
@@ -144,7 +144,7 @@ You can also click **"Create Account"** to register your own custom account.
 The test suite runs with **Vitest** and **Supertest** covering authentication, course CRUD, assignment management, multi-tenant isolation, filtering, sorting, and calendar export:
 
 ```bash
-cd backend
+cd StudyFlow/backend
 npm test
 ```
 
@@ -162,6 +162,7 @@ Expected output:
 To run the entire application containerized:
 
 ```bash
+cd StudyFlow
 docker compose up --build
 ```
 Access the application at `http://localhost:5000`.
@@ -172,60 +173,67 @@ Access the application at `http://localhost:5000`.
 
 ```
 .
-├── backend/
-│   ├── prisma/
-│   │   ├── schema.prisma       # Prisma relational data model
-│   │   ├── seed.ts             # University demo seed script
-│   │   └── dev.db              # SQLite database file
-│   ├── src/
-│   │   ├── controllers/        # Business logic (auth, courses, assignments, etc.)
-│   │   ├── middleware/         # JWT auth token & Zod validation
-│   │   ├── routes/             # Express API routing
-│   │   ├── services/           # RFC 5545 iCalendar generator
-│   │   ├── prisma.ts           # Prisma singleton
-│   │   └── server.ts           # Express server & static SPA host
-│   ├── tests/
-│   │   └── api.test.ts         # Vitest integration test suite
-│   ├── package.json
-│   └── tsconfig.json
+├── README.md                   # Project overview & documentation (Root level)
+├── .gitignore                  # Git ignore rules (Root level)
+├── package.json                # Root package management scripts
+├── .github/
+│   └── workflows/
+│       └── ci.yml              # GitHub Actions CI automated pipeline
 │
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── layout/         # Navbar, Sidebar, DarkModeToggle
-│   │   │   ├── auth/           # Login & Register modal with demo button
-│   │   │   ├── dashboard/      # Stat cards, Overdue alert, Upcoming timeline
-│   │   │   ├── assignments/    # Filter bar, Assignment list & edit modal
-│   │   │   ├── calendar/       # Monthly interactive grid view
-│   │   │   ├── kanban/         # Drag & Drop status columns
-│   │   │   ├── courses/        # Course cards & color/icon picker modal
-│   │   │   ├── analytics/      # Completion graphs & workload breakdown
-│   │   │   └── common/         # Toast, Modal, Spinner, Empty states
-│   │   ├── context/            # AuthContext, ThemeContext
-│   │   ├── services/           # Typed API client
-│   │   ├── types/              # Full TypeScript definitions
-│   │   ├── App.tsx             # Root component
-│   │   └── main.tsx            # App entrypoint
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── tailwind.config.js
-│
-├── docs/
-│   ├── api.md                  # Comprehensive REST API reference
-│   └── technical-decisions.md  # Architectural & design decisions
-│
-├── .github/workflows/ci.yml    # CI automated test pipeline
-├── Dockerfile                  # Production multi-stage Docker build
-├── docker-compose.yml          # Container configuration
-└── README.md
+└── StudyFlow/                  # Core application package
+    ├── Dockerfile              # Production multi-stage Docker build
+    ├── docker-compose.yml      # Containerized local development
+    ├── .dockerignore           # Docker ignore patterns
+    │
+    ├── docs/
+    │   ├── api.md              # Comprehensive REST API reference
+    │   └── technical-decisions.md # Architectural & design decisions
+    │
+    ├── backend/
+    │   ├── prisma/
+    │   │   ├── schema.prisma   # Prisma relational data model
+    │   │   ├── seed.ts         # University demo seed script
+    │   │   └── dev.db          # SQLite database file
+    │   ├── src/
+    │   │   ├── controllers/    # Business logic (auth, courses, assignments, etc.)
+    │   │   ├── middleware/     # JWT auth token & Zod validation
+    │   │   ├── routes/         # Express API routing
+    │   │   ├── services/       # RFC 5545 iCalendar generator
+    │   │   ├── prisma.ts       # Prisma singleton
+    │   │   └── server.ts       # Express server & static SPA host
+    │   ├── tests/
+    │   │   └── api.test.ts     # Vitest integration test suite
+    │   ├── package.json
+    │   └── tsconfig.json
+    │
+    └── frontend/
+        ├── src/
+        │   ├── components/
+        │   │   ├── layout/     # Navbar, Sidebar, DarkModeToggle
+        │   │   ├── auth/       # Login & Register modal with demo button
+        │   │   ├── dashboard/  # Stat cards, Overdue alert, Upcoming timeline
+        │   │   ├── assignments/# Filter bar, Assignment list & edit modal
+        │   │   ├── calendar/   # Monthly interactive grid view
+        │   │   ├── kanban/     # Drag & Drop status columns
+        │   │   ├── courses/    # Course cards & color/icon picker modal
+        │   │   ├── analytics/  # Completion graphs & workload breakdown
+        │   │   └── common/     # Toast, Modal, Spinner, Empty states
+        │   ├── context/        # AuthContext, ThemeContext
+        │   ├── services/       # Typed API client
+        │   ├── types/          # Full TypeScript definitions
+        │   ├── App.tsx         # Root component
+        │   └── main.tsx        # App entrypoint
+        ├── package.json
+        ├── vite.config.ts
+        └── tailwind.config.js
 ```
 
 ---
 
 ## 📚 Documentation Deliverables
 
-- **API Documentation**: [`docs/api.md`](docs/api.md)
-- **Technical Decisions & Trade-offs**: [`docs/technical-decisions.md`](docs/technical-decisions.md)
+- **API Documentation**: [`StudyFlow/docs/api.md`](StudyFlow/docs/api.md)
+- **Technical Decisions & Trade-offs**: [`StudyFlow/docs/technical-decisions.md`](StudyFlow/docs/technical-decisions.md)
 
 ---
 
