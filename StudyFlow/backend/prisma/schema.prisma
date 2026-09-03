@@ -12,6 +12,12 @@ model User {
   email        String       @unique
   passwordHash String
   name         String
+  university   String?
+  major        String?
+  semester     String?
+  studyGoal    String?
+  avatarColor  String?      @default("#6366F1")
+  streakDays   Int          @default(1)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   courses      Course[]
@@ -47,6 +53,9 @@ model Assignment {
   status         String    @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, COMPLETED
   isRecurring    Boolean   @default(false)
   recurrenceRule String?   // DAILY, WEEKLY, BIWEEKLY, MONTHLY
+  subtasks       String?   // JSON string of array [{ id, title, completed }]
+  notes          String?   // Personal study notes and reflections
+  tags           String?   // Optional comma-separated tags
   completedAt    DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt

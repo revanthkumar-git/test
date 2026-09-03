@@ -11,6 +11,7 @@ import { CoursesView } from './components/courses/CoursesView';
 import { AnalyticsView } from './components/analytics/AnalyticsView';
 import { AssignmentModal } from './components/assignments/AssignmentModal';
 import { CourseModal } from './components/courses/CourseModal';
+import { ProfileModal } from './components/profile/ProfileModal';
 import { LoadingSpinner } from './components/common/LoadingAndEmpty';
 import { useToast } from './components/common/Toast';
 import { coursesApi, assignmentsApi, dashboardApi } from './services/api';
@@ -36,6 +37,8 @@ export const AppContent: React.FC = () => {
 
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
   const [courseToEdit, setCourseToEdit] = useState<Course | null>(null);
+
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // Load core application data
   const loadData = useCallback(async () => {
@@ -83,7 +86,7 @@ export const AppContent: React.FC = () => {
       loadData();
     } catch (err: any) {
       error(err.message || 'Failed to update status');
-      loadData(); // Revert
+      loadData();
     }
   };
 
@@ -139,6 +142,7 @@ export const AppContent: React.FC = () => {
           setAssignmentToEdit(a);
           setIsAssignmentModalOpen(true);
         }}
+        onOpenProfile={() => setIsProfileModalOpen(true)}
       />
 
       <div className="flex-1 flex">
@@ -172,6 +176,7 @@ export const AppContent: React.FC = () => {
                 setInitialAssignmentDate(null);
                 setIsAssignmentModalOpen(true);
               }}
+              onOpenProfile={() => setIsProfileModalOpen(true)}
               onNavigateTab={(tab) => setCurrentTab(tab)}
               onToggleStatus={handleToggleStatus}
             />
@@ -250,7 +255,7 @@ export const AppContent: React.FC = () => {
         </main>
       </div>
 
-      {/* Assignment Modal (Create & Edit) */}
+      {/* Assignment Modal (Create & Edit with Subtasks & Notes) */}
       <AssignmentModal
         isOpen={isAssignmentModalOpen}
         onClose={() => {
@@ -273,6 +278,12 @@ export const AppContent: React.FC = () => {
         }}
         courseToEdit={courseToEdit}
         onSuccess={loadData}
+      />
+
+      {/* Profile & Personal Goals Modal */}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
       />
     </div>
   );

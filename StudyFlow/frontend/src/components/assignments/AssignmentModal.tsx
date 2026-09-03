@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
-import { Course, Assignment, Priority, Status } from '../../types';
+import { Course, Assignment, Priority, Status, Subtask } from '../../types';
 import { assignmentsApi } from '../../services/api';
 import { useToast } from '../common/Toast';
-import { Calendar, Clock, Repeat, Trash2 } from 'lucide-react';
+import { SubtaskList } from './SubtaskList';
+import { Calendar, Clock, Repeat, Trash2, Tag, BookMarked } from 'lucide-react';
 
 interface AssignmentModalProps {
   isOpen: boolean;
@@ -30,6 +31,9 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
   const [status, setStatus] = useState<Status>('NOT_STARTED');
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceRule, setRecurrenceRule] = useState('WEEKLY');
+  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+  const [notes, setNotes] = useState('');
+  const [tags, setTags] = useState('');
   const [loading, setLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -40,7 +44,6 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
       setTitle(assignmentToEdit.title);
       setDescription(assignmentToEdit.description || '');
       setCourseId(assignmentToEdit.courseId);
-      // Format to YYYY-MM-DDTHH:mm
       const d = new Date(assignmentToEdit.dueDate);
       const tzOffset = d.getTimezoneOffset() * 60000;
       const localISOTime = new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
@@ -49,13 +52,26 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
       setStatus(assignmentToEdit.status);
       setIsRecurring(assignmentToEdit.isRecurring);
       setRecurrenceRule(assignmentToEdit.recurrenceRule || 'WEEKLY');
+      setNotes(assignmentToEdit.notes || '');
+      setTags(assignmentToEdit.tags || '');
+
+      // Parse subtasks JSON
+      if (assignmentToEdit.subtasks) {
+        try {
+          const parsed = JSON.parse(assignmentToEdit.subtasks);
+          setSubtasks(Array.isArray(parsed) ? parsed : []);
+        } catch {
+          setSubtasks([]);
+        }
+      } else {
+        setSubtasks([]);
+      }
     } else {
       setTitle('');
       setDescription('');
       setCourseId(courses.length > 0 ? courses[0].id : '');
       const defaultDate = initialDate ? new Date(initialDate) : new Date();
       if (!initialDate) {
-        // default to tomorrow at 23:59
         defaultDate.setDate(defaultDate.getDate() + 1);
         defaultDate.setHours(23, 59, 0, 0);
       } else {
@@ -67,6 +83,9 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
       setStatus('NOT_STARTED');
       setIsRecurring(false);
       setRecurrenceRule('WEEKLY');
+      setSubtasks([]);
+      setNotes('');
+      setTags('');
     }
   }, [assignmentToEdit, courses, initialDate, isOpen]);
 
@@ -96,14 +115,17 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
         status,
         isRecurring,
         recurrenceRule: isRecurring ? recurrenceRule : undefined,
+        subtasks,
+        notes: notes.trim() || null,
+        tags: tags.trim() || null,
       };
 
       if (assignmentToEdit) {
         await assignmentsApi.update(assignmentToEdit.id, payload as any);
-        success('Assignment updated successfully!');
+        success('Assignment and milestones updated!');
       } else {
         await assignmentsApi.create(payload as any);
-        success('Assignment created successfully!');
+        success('Assignment created with study milestones!');
       }
 
       onSuccess();
@@ -136,9 +158,11 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={assignmentToEdit ? 'Edit Assignment' : 'Create New Assignment'}
+      title={assignmentToEdit ? 'Edit Assignment & Milestones' : 'Create New Assignment'}
+      maxWidth="max-w-2xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Title */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
             Assignment Title *
@@ -153,6 +177,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
           />
         </div>
 
+        {/* Course */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
             Course *
@@ -172,6 +197,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
           </select>
         </div>
 
+        {/* Due Date & Priority */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -202,9 +228,10 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
           </div>
         </div>
 
+        {/* Status */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-            Status
+            Assignment Status
           </label>
           <div className="grid grid-cols-3 gap-2">
             {[
@@ -228,53 +255,93 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
           </div>
         </div>
 
+        {/* Interactive Subtasks & Milestones Checklist */}
+        <SubtaskList
+          subtasks={subtasks}
+          onChange={(updated) => {
+            setSubtasks(updated);
+            // If all subtasks completed, suggest completed status
+            if (updated.length > 0 && updated.every((item) => item.completed) && status !== 'COMPLETED') {
+              setStatus('COMPLETED');
+            }
+          }}
+        />
+
+        {/* Personal Study Notes */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-            Description & Notes
+          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+            <BookMarked className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+            <span>Personal Study Notes & Questions for TA</span>
           </label>
           <textarea
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Instructions, readings, submission guidelines..."
-            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 px-3.5 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+            rows={2}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="e.g. Spent 2 hours on problem 4; need to verify boundary conditions with professor..."
+            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 px-3.5 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
           />
         </div>
 
-        {/* Bonus: Recurring Assignment Option */}
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 bg-slate-50/50 dark:bg-slate-800/30">
-          <label className="flex items-center gap-2.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isRecurring}
-              onChange={(e) => setIsRecurring(e.target.checked)}
-              className="rounded text-brand-600 focus:ring-brand-500 h-4 w-4"
-            />
-            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-800 dark:text-slate-200">
-              <Repeat className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
-              <span>Recurring Assignment</span>
-            </div>
+        {/* General Description & Instructions */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+            Instructions & Submission Guidelines
           </label>
+          <textarea
+            rows={2}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Official instructions from syllabus or portal..."
+            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 px-3.5 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+          />
+        </div>
 
-          {isRecurring && (
-            <div className="mt-2.5 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex items-center gap-3">
-              <span className="text-xs text-slate-500">Repeat every:</span>
+        {/* Tags & Recurring */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1">
+              <Tag className="w-3 h-3 text-slate-400" />
+              <span>Tags (comma separated)</span>
+            </label>
+            <input
+              type="text"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="e.g. Lab, Exam Prep, Project"
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 px-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+            />
+          </div>
+
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col justify-center">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isRecurring}
+                onChange={(e) => setIsRecurring(e.target.checked)}
+                className="rounded text-brand-600 focus:ring-brand-500 h-4 w-4"
+              />
+              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-800 dark:text-slate-200">
+                <Repeat className="w-3.5 h-3.5 text-brand-600" />
+                <span>Repeat Assignment</span>
+              </div>
+            </label>
+            {isRecurring && (
               <select
                 value={recurrenceRule}
                 onChange={(e) => setRecurrenceRule(e.target.value)}
-                className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-xs text-slate-800 dark:text-slate-200"
+                className="mt-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-xs text-slate-800 dark:text-slate-200"
               >
-                <option value="DAILY">Day (Daily)</option>
-                <option value="WEEKLY">Week (Weekly)</option>
-                <option value="BIWEEKLY">2 Weeks (Biweekly)</option>
-                <option value="MONTHLY">Month (Monthly)</option>
+                <option value="DAILY">Daily</option>
+                <option value="WEEKLY">Weekly</option>
+                <option value="BIWEEKLY">Biweekly</option>
+                <option value="MONTHLY">Monthly</option>
               </select>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
           {assignmentToEdit ? (
             <button
               type="button"

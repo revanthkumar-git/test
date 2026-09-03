@@ -35,6 +35,9 @@ export const createAssignmentSchema = z.object({
   status: statusEnum.optional().default('NOT_STARTED'),
   isRecurring: z.boolean().optional().default(false),
   recurrenceRule: z.enum(['DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY']).optional().nullable(),
+  subtasks: z.any().optional(),
+  notes: z.string().trim().optional().nullable(),
+  tags: z.string().trim().optional().nullable(),
 });
 
 export const updateAssignmentSchema = z.object({
@@ -48,6 +51,9 @@ export const updateAssignmentSchema = z.object({
   status: statusEnum.optional(),
   isRecurring: z.boolean().optional(),
   recurrenceRule: z.enum(['DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY']).optional().nullable(),
+  subtasks: z.any().optional(),
+  notes: z.string().trim().optional().nullable(),
+  tags: z.string().trim().optional().nullable(),
 });
 
 export const updateStatusSchema = z.object({
@@ -78,6 +84,7 @@ export const getAssignments = async (req: AuthenticatedRequest, res: Response): 
       where.OR = [
         { title: { contains: searchTerm } },
         { description: { contains: searchTerm } },
+        { notes: { contains: searchTerm } },
       ];
     }
 
@@ -107,7 +114,6 @@ export const getAssignments = async (req: AuthenticatedRequest, res: Response): 
           orderBy = { title: 'asc' };
           break;
         case 'priority':
-          // In SQLite / Prisma, order by priority directly
           orderBy = { priority: 'desc' };
           break;
         case 'createdAt':
@@ -177,9 +183,11 @@ export const createAssignment = async (req: AuthenticatedRequest, res: Response)
       status,
       isRecurring,
       recurrenceRule,
+      subtasks,
+      notes,
+      tags,
     } = req.body;
 
-    // Verify course belongs to this user
     const course = await prisma.course.findFirst({
       where: { id: courseId, userId },
     });
@@ -195,6 +203,11 @@ export const createAssignment = async (req: AuthenticatedRequest, res: Response)
     const parsedStatus = normalizeStatus(status);
     const parsedPriority = normalizePriority(priority);
 
+    let serializedSubtasks: string | null = null;
+    if (subtasks) {
+      serializedSubtasks = typeof subtasks === 'string' ? subtasks : JSON.stringify(subtasks);
+    }
+
     const assignment = await prisma.assignment.create({
       data: {
         userId,
@@ -206,6 +219,9 @@ export const createAssignment = async (req: AuthenticatedRequest, res: Response)
         status: parsedStatus,
         isRecurring: !!isRecurring,
         recurrenceRule: isRecurring ? (recurrenceRule || 'WEEKLY') : null,
+        subtasks: serializedSubtasks,
+        notes: notes || null,
+        tags: tags || null,
         completedAt: parsedStatus === 'COMPLETED' ? new Date() : null,
       },
       include: {
@@ -254,6 +270,9 @@ export const updateAssignment = async (req: AuthenticatedRequest, res: Response)
       status,
       isRecurring,
       recurrenceRule,
+      subtasks,
+      notes,
+      tags,
     } = req.body;
 
     if (courseId && courseId !== existingAssignment.courseId) {
@@ -276,6 +295,11 @@ export const updateAssignment = async (req: AuthenticatedRequest, res: Response)
       }
     }
 
+    let serializedSubtasks = existingAssignment.subtasks;
+    if (subtasks !== undefined) {
+      serializedSubtasks = typeof subtasks === 'string' ? subtasks : JSON.stringify(subtasks);
+    }
+
     const updatedAssignment = await prisma.assignment.update({
       where: { id },
       data: {
@@ -287,6 +311,9 @@ export const updateAssignment = async (req: AuthenticatedRequest, res: Response)
         ...(status !== undefined && { status: nextStatus, completedAt }),
         ...(isRecurring !== undefined && { isRecurring }),
         ...(recurrenceRule !== undefined && { recurrenceRule }),
+        ...(subtasks !== undefined && { subtasks: serializedSubtasks }),
+        ...(notes !== undefined && { notes }),
+        ...(tags !== undefined && { tags }),
       },
       include: {
         course: {
@@ -301,7 +328,7 @@ export const updateAssignment = async (req: AuthenticatedRequest, res: Response)
       },
     });
 
-    // Bonus feature: If recurring and just marked completed, create the next recurring assignment
+    // Auto-create next recurring instance if just completed
     if (
       existingAssignment.status !== 'COMPLETED' &&
       nextStatus === 'COMPLETED' &&
@@ -382,46 +409,79 @@ export const updateAssignmentStatus = async (req: AuthenticatedRequest, res: Res
       },
     });
 
-    // Auto-create next occurrence if recurring
-    if (
-      existingAssignment.status !== 'COMPLETED' &&
-      nextStatus === 'COMPLETED' &&
-      updatedAssignment.isRecurring &&
-      updatedAssignment.recurrenceRule
-    ) {
-      const currentDue = new Date(updatedAssignment.dueDate);
-      const nextDue = new Date(currentDue);
-      if (updatedAssignment.recurrenceRule === 'DAILY') {
-        nextDue.setDate(nextDue.getDate() + 1);
-      } else if (updatedAssignment.recurrenceRule === 'WEEKLY') {
-        nextDue.setDate(nextDue.getDate() + 7);
-      } else if (updatedAssignment.recurrenceRule === 'BIWEEKLY') {
-        nextDue.setDate(nextDue.getDate() + 14);
-      } else if (updatedAssignment.recurrenceRule === 'MONTHLY') {
-        nextDue.setMonth(nextDue.getMonth() + 1);
-      }
-
-      await prisma.assignment.create({
-        data: {
-          userId,
-          courseId: updatedAssignment.courseId,
-          title: updatedAssignment.title,
-          description: updatedAssignment.description,
-          dueDate: nextDue,
-          priority: updatedAssignment.priority,
-          status: 'NOT_STARTED',
-          isRecurring: true,
-          recurrenceRule: updatedAssignment.recurrenceRule,
-        },
-      });
-    }
-
     res.status(200).json({
       message: 'Status updated successfully',
       assignment: updatedAssignment,
     });
   } catch (error) {
     console.error('updateAssignmentStatus error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+export const toggleSubtask = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const id = req.params.id as string;
+    const subtaskId = req.params.subtaskId as string;
+
+    const assignment = await prisma.assignment.findFirst({
+      where: { id, userId },
+    });
+
+    if (!assignment) {
+      res.status(404).json({ error: 'Not Found', message: 'Assignment not found.' });
+      return;
+    }
+
+    let subtasksList: { id: string; title: string; completed: boolean }[] = [];
+    if (assignment.subtasks) {
+      try {
+        subtasksList = JSON.parse(assignment.subtasks);
+      } catch {
+        subtasksList = [];
+      }
+    }
+
+    const targetSubtask = subtasksList.find((s) => s.id === subtaskId);
+    if (!targetSubtask) {
+      res.status(404).json({ error: 'Not Found', message: 'Subtask not found.' });
+      return;
+    }
+
+    targetSubtask.completed = !targetSubtask.completed;
+
+    // Check if all subtasks are now completed
+    const allCompleted = subtasksList.length > 0 && subtasksList.every((s) => s.completed);
+
+    const updatedAssignment = await prisma.assignment.update({
+      where: { id },
+      data: {
+        subtasks: JSON.stringify(subtasksList),
+        ...(allCompleted && assignment.status !== 'COMPLETED' && {
+          status: 'COMPLETED',
+          completedAt: new Date(),
+        }),
+      },
+      include: {
+        course: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            color: true,
+            icon: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json({
+      message: 'Subtask updated',
+      assignment: updatedAssignment,
+    });
+  } catch (error) {
+    console.error('toggleSubtask error:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };

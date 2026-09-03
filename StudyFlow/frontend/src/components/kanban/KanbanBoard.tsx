@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Assignment, Status } from '../../types';
+import { Assignment, Status, Subtask } from '../../types';
 import { getCourseIcon } from '../../utils/courseIcons';
-import { Clock, Plus, GripVertical, AlertTriangle } from 'lucide-react';
+import { Clock, Plus, GripVertical, AlertTriangle, ListChecks, BookMarked } from 'lucide-react';
 
 interface KanbanBoardProps {
   assignments: Assignment[];
@@ -49,6 +49,16 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       onStatusChange(id, status);
     }
     setDraggedId(null);
+  };
+
+  const parseSubtasks = (json?: string | null): Subtask[] => {
+    if (!json) return [];
+    try {
+      const parsed = JSON.parse(json);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   };
 
   const now = new Date();
@@ -115,6 +125,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     const IconComponent = getCourseIcon(a.course.icon);
                     const isOverdue = a.status !== 'COMPLETED' && new Date(a.dueDate) < now;
                     const dueDateObj = new Date(a.dueDate);
+                    const subtasks = parseSubtasks(a.subtasks);
+                    const completedSubtasks = subtasks.filter((s) => s.completed).length;
 
                     return (
                       <div
@@ -161,14 +173,33 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           {a.title}
                         </h4>
 
+                        {/* Subtasks Progress Bar if any */}
+                        {subtasks.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            <div className="flex items-center justify-between text-[10px] text-slate-500">
+                              <span className="flex items-center gap-1">
+                                <ListChecks className="w-3 h-3 text-brand-600" />
+                                <span>{completedSubtasks}/{subtasks.length} steps</span>
+                              </span>
+                              <span>{Math.round((completedSubtasks / subtasks.length) * 100)}%</span>
+                            </div>
+                            <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-emerald-500 rounded-full"
+                                style={{ width: `${(completedSubtasks / subtasks.length) * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
                         {/* Description Preview */}
-                        {a.description && (
+                        {a.description && !subtasks.length && (
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
                             {a.description}
                           </p>
                         )}
 
-                        {/* Due Date */}
+                        {/* Due Date & Grip */}
                         <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 dark:border-slate-800 text-[10px]">
                           <span
                             className={`flex items-center gap-1 ${

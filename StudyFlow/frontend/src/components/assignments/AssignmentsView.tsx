@@ -7,13 +7,13 @@ import {
   Clock,
   Repeat,
   AlertTriangle,
-  MoreVertical,
   Edit2,
-  Trash2,
-  Filter,
   Check,
+  ListChecks,
+  BookMarked,
+  Tag,
 } from 'lucide-react';
-import { Assignment, Course, Priority, Status } from '../../types';
+import { Assignment, Course, Priority, Status, Subtask } from '../../types';
 import { getCourseIcon } from '../../utils/courseIcons';
 import { EmptyState, LoadingSpinner } from '../common/LoadingAndEmpty';
 
@@ -44,28 +44,36 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
 
   const now = new Date();
 
-  // Filter and sort assignments on the client or reactive update
+  const parseSubtasks = (json?: string | null): Subtask[] => {
+    if (!json) return [];
+    try {
+      const parsed = JSON.parse(json);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  // Filter and sort assignments on the client
   const filteredAssignments = useMemo(() => {
     return assignments.filter((a) => {
-      // Search filter
       if (searchTerm.trim()) {
         const term = searchTerm.toLowerCase();
         const matchTitle = a.title.toLowerCase().includes(term);
         const matchDesc = a.description?.toLowerCase().includes(term);
-        if (!matchTitle && !matchDesc) return false;
+        const matchNotes = a.notes?.toLowerCase().includes(term);
+        const matchTags = a.tags?.toLowerCase().includes(term);
+        if (!matchTitle && !matchDesc && !matchNotes && !matchTags) return false;
       }
 
-      // Course filter
       if (selectedCourse !== 'all' && a.courseId !== selectedCourse) {
         return false;
       }
 
-      // Priority filter
       if (selectedPriority !== 'all' && a.priority !== selectedPriority) {
         return false;
       }
 
-      // Status filter
       if (selectedStatus !== 'all') {
         if (selectedStatus === 'OVERDUE') {
           if (a.status === 'COMPLETED' || new Date(a.dueDate) >= now) return false;
@@ -151,10 +159,10 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Assignments Hub
+            Assignments & Milestones Hub
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Search, filter, and organize all your upcoming academic tasks.
+            Search, filter, break down tasks into checklist steps, and track progress.
           </p>
         </div>
         <button
@@ -173,7 +181,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Search assignments by title or description..."
+            placeholder="Search assignments by title, notes, or tags..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
@@ -207,7 +215,6 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
 
           {/* Select dropdowns: Course, Priority, Sort */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            {/* Course Filter */}
             <select
               value={selectedCourse}
               onChange={(e) => setSelectedCourse(e.target.value)}
@@ -221,7 +228,6 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
               ))}
             </select>
 
-            {/* Priority Filter */}
             <select
               value={selectedPriority}
               onChange={(e) => setSelectedPriority(e.target.value)}
@@ -233,7 +239,6 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
               <option value="LOW">Low Priority</option>
             </select>
 
-            {/* Sort */}
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
@@ -254,7 +259,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
       ) : filteredAssignments.length === 0 ? (
         <EmptyState
           title="No Assignments Found"
-          description="No assignments matched your search or active filters. Try clearing filters or create a new assignment."
+          description="No assignments matched your search or active filters."
           actionLabel="Create Assignment"
           onAction={onOpenCreateAssignment}
         />
@@ -264,6 +269,8 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
             const IconComponent = getCourseIcon(a.course.icon);
             const isOverdue = a.status !== 'COMPLETED' && new Date(a.dueDate) < now;
             const dueDateObj = new Date(a.dueDate);
+            const subtasks = parseSubtasks(a.subtasks);
+            const completedSubtasks = subtasks.filter((s) => s.completed).length;
 
             return (
               <div
@@ -275,7 +282,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                 }`}
               >
                 {/* Left: Complete Checkbox + Title + Meta */}
-                <div className="flex items-start gap-3.5 min-w-0">
+                <div className="flex items-start gap-3.5 min-w-0 flex-1">
                   <button
                     onClick={() => onToggleStatus(a)}
                     className={`mt-0.5 w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 transition-all ${
@@ -288,7 +295,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                     <Check className="w-4 h-4 stroke-[3]" />
                   </button>
 
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3
                         onClick={() => onSelectAssignment(a)}
@@ -316,6 +323,14 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                       </p>
                     )}
 
+                    {/* Personal Notes Preview */}
+                    {a.notes && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-indigo-600 dark:text-indigo-400 mt-1">
+                        <BookMarked className="w-3 h-3 shrink-0" />
+                        <span className="italic truncate">{a.notes}</span>
+                      </div>
+                    )}
+
                     <div className="flex flex-wrap items-center gap-3 mt-2 text-[11px]">
                       {/* Course pill */}
                       <span
@@ -337,12 +352,28 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                         <Clock className="w-3.5 h-3.5" />
                         <span>Due {dueDateObj.toLocaleDateString()} at {dueDateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </span>
+
+                      {/* Subtasks Progress Badge */}
+                      {subtasks.length > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                          <ListChecks className="w-3.5 h-3.5" />
+                          <span>{completedSubtasks}/{subtasks.length} steps</span>
+                        </span>
+                      )}
+
+                      {/* Tags */}
+                      {a.tags && (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-slate-400">
+                          <Tag className="w-2.5 h-2.5" />
+                          <span>{a.tags}</span>
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 {/* Right: Badges & Edit Button */}
-                <div className="flex items-center justify-between sm:justify-end gap-2.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between sm:justify-end gap-2.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 shrink-0">
                   <div className="flex items-center gap-2">
                     {getStatusBadge(a.status, isOverdue)}
                     {getPriorityBadge(a.priority)}
@@ -350,7 +381,7 @@ export const AssignmentsView: React.FC<AssignmentsViewProps> = ({
                   <button
                     onClick={() => onSelectAssignment(a)}
                     className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                    title="Edit Assignment"
+                    title="Edit Assignment & Milestones"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>

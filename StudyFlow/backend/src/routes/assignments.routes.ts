@@ -6,6 +6,7 @@ import {
   updateAssignment,
   deleteAssignment,
   updateAssignmentStatus,
+  toggleSubtask,
   createAssignmentSchema,
   updateAssignmentSchema,
   updateStatusSchema,
@@ -15,7 +16,6 @@ import { validateBody } from '../middleware/validate';
 
 const router = Router();
 
-// All assignment routes require authentication
 router.use(authenticateToken);
 
 router.get('/', getAssignments);
@@ -23,6 +23,7 @@ router.post('/', validateBody(createAssignmentSchema), createAssignment);
 router.get('/:id', getAssignmentById);
 router.put('/:id', validateBody(updateAssignmentSchema), updateAssignment);
 router.patch('/:id/status', validateBody(updateStatusSchema), updateAssignmentStatus);
+router.patch('/:id/subtasks/:subtaskId/toggle', toggleSubtask);
 router.delete('/:id', deleteAssignment);
 
 export default router;

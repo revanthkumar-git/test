@@ -7,6 +7,7 @@ import {
   AssignmentFilterParams,
   Status,
   Priority,
+  Subtask,
 } from '../types';
 
 const API_BASE_URL = '/api';
@@ -52,7 +53,6 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
     if (response.status === 401) {
       clearStoredToken();
-      // Optional: trigger custom event if needed
       window.dispatchEvent(new Event('studyflow:unauthorized'));
     }
 
@@ -64,7 +64,15 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 // Auth API
 export const authApi = {
-  register: (data: { email: string; password: string; name: string }) =>
+  register: (data: {
+    email: string;
+    password: string;
+    name: string;
+    university?: string;
+    major?: string;
+    semester?: string;
+    studyGoal?: string;
+  }) =>
     request<{ message: string; user: User; token: string }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -79,6 +87,19 @@ export const authApi = {
   getMe: () =>
     request<{ user: User }>('/auth/me', {
       method: 'GET',
+    }),
+
+  updateProfile: (data: {
+    name?: string;
+    university?: string | null;
+    major?: string | null;
+    semester?: string | null;
+    studyGoal?: string | null;
+    avatarColor?: string;
+  }) =>
+    request<{ message: string; user: User }>('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
     }),
 };
 
@@ -147,6 +168,9 @@ export const assignmentsApi = {
     status?: Status;
     isRecurring?: boolean;
     recurrenceRule?: string;
+    subtasks?: Subtask[];
+    notes?: string;
+    tags?: string;
   }) =>
     request<{ message: string; assignment: Assignment }>('/assignments', {
       method: 'POST',
@@ -164,6 +188,9 @@ export const assignmentsApi = {
       status?: Status;
       isRecurring?: boolean;
       recurrenceRule?: string;
+      subtasks?: Subtask[];
+      notes?: string;
+      tags?: string;
     }
   ) =>
     request<{ message: string; assignment: Assignment }>('/assignments/' + id, {
@@ -176,6 +203,14 @@ export const assignmentsApi = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
+
+  toggleSubtask: (id: string, subtaskId: string) =>
+    request<{ message: string; assignment: Assignment }>(
+      `/assignments/${id}/subtasks/${subtaskId}/toggle`,
+      {
+        method: 'PATCH',
+      }
+    ),
 
   delete: (id: string) =>
     request<{ message: string }>('/assignments/' + id, {

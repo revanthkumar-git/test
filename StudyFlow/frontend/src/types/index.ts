@@ -1,10 +1,22 @@
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
 export type Status = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 
+export interface Subtask {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 export interface User {
   id: string;
   email: string;
   name: string;
+  university?: string | null;
+  major?: string | null;
+  semester?: string | null;
+  studyGoal?: string | null;
+  avatarColor?: string | null;
+  streakDays?: number;
   createdAt: string;
 }
 
@@ -34,6 +46,9 @@ export interface Assignment {
   status: Status;
   isRecurring: boolean;
   recurrenceRule?: string | null;
+  subtasks?: string | null; // JSON string
+  notes?: string | null;
+  tags?: string | null;
   completedAt?: string | null;
   createdAt: string;
   updatedAt: string;

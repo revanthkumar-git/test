@@ -3,13 +3,13 @@ import {
   Sun,
   Moon,
   LogOut,
-  Calendar as CalendarIcon,
   Bell,
   Menu,
   X,
   Download,
   AlertTriangle,
   GraduationCap,
+  UserCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -21,6 +21,7 @@ interface NavbarProps {
   isMobileMenuOpen: boolean;
   overdueAssignments?: Assignment[];
   onSelectAssignment?: (a: Assignment) => void;
+  onOpenProfile?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -28,6 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   isMobileMenuOpen,
   overdueAssignments = [],
   onSelectAssignment,
+  onOpenProfile,
 }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -140,7 +142,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => setShowUserMenu(!showUserMenu)}
             className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-xs font-bold text-white uppercase shadow-sm">
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold text-white uppercase shadow-sm"
+              style={{ backgroundColor: user?.avatarColor || '#6366F1' }}
+            >
               {user?.name ? user.name.charAt(0) : 'U'}
             </div>
             <span className="hidden lg:block text-xs font-semibold text-slate-700 dark:text-slate-300 max-w-[100px] truncate">
@@ -149,17 +154,34 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           {showUserMenu && (
-            <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-800 dark:bg-slate-900 z-50 animate-in fade-in">
+            <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-800 dark:bg-slate-900 z-50 animate-in fade-in">
               <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
-                <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{user?.name}</p>
+                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{user?.name}</p>
                 <p className="text-[11px] text-slate-400 truncate">{user?.email}</p>
+                {user?.university && (
+                  <p className="text-[10px] text-brand-600 dark:text-brand-400 font-medium truncate mt-0.5">
+                    {user.university}
+                  </p>
+                )}
               </div>
+
+              <button
+                onClick={() => {
+                  setShowUserMenu(false);
+                  onOpenProfile?.();
+                }}
+                className="mt-1 flex w-full items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              >
+                <UserCheck className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                <span>Edit Profile & Goals</span>
+              </button>
+
               <button
                 onClick={() => {
                   setShowUserMenu(false);
                   logout();
                 }}
-                className="mt-1 flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors"
+                className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors"
               >
                 <LogOut className="w-4 h-4" />
                 Sign Out

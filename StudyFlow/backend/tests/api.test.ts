@@ -12,7 +12,6 @@ describe('Student Productivity App API Integration Tests', () => {
   let assignmentAId: string;
 
   beforeAll(async () => {
-    // Ensure test users are cleared
     await prisma.user.deleteMany({
       where: {
         email: { in: ['test-user-a@test.edu', 'test-user-b@test.edu'] },
@@ -36,22 +35,44 @@ describe('Student Productivity App API Integration Tests', () => {
       expect(res.body.status).toBe('ok');
     });
 
-    it('POST /api/auth/register registers user A successfully', async () => {
+    it('POST /api/auth/register registers user A successfully with personalized fields', async () => {
       const res = await request(app)
         .post('/api/auth/register')
         .send({
           name: 'Alice User A',
           email: 'test-user-a@test.edu',
           password: 'password123',
+          university: 'MIT',
+          major: 'Robotics',
+          semester: 'Fall 2026',
+          studyGoal: 'Finish labs early',
         });
 
       expect(res.status).toBe(201);
       expect(res.body.user).toBeDefined();
       expect(res.body.user.email).toBe('test-user-a@test.edu');
+      expect(res.body.user.university).toBe('MIT');
       expect(res.body.token).toBeDefined();
 
       userAToken = res.body.token;
       userAId = res.body.user.id;
+    });
+
+    it('PUT /api/auth/profile updates user profile', async () => {
+      const res = await request(app)
+        .put('/api/auth/profile')
+        .set('Authorization', `Bearer ${userAToken}`)
+        .send({
+          name: 'Alice Updated',
+          university: 'MIT EECS',
+          major: 'Computer Science',
+          studyGoal: 'Maintain 4.0 GPA',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.user.name).toBe('Alice Updated');
+      expect(res.body.user.university).toBe('MIT EECS');
+      expect(res.body.user.studyGoal).toBe('Maintain 4.0 GPA');
     });
 
     it('POST /api/auth/register registers user B successfully', async () => {
@@ -184,8 +205,8 @@ describe('Student Productivity App API Integration Tests', () => {
     });
   });
 
-  describe('Assignment Management, Filtering, and Recurrence', () => {
-    it('POST /api/assignments creates an assignment for User A', async () => {
+  describe('Assignment Management, Subtasks, and Recurrence', () => {
+    it('POST /api/assignments creates an assignment with subtasks for User A', async () => {
       const dueDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
       const res = await request(app)
         .post('/api/assignments')
@@ -197,13 +218,33 @@ describe('Student Productivity App API Integration Tests', () => {
           dueDate,
           priority: 'HIGH',
           status: 'NOT_STARTED',
+          notes: 'Office hours on Thursday at 2pm',
+          tags: 'Calculus,Homework',
+          subtasks: [
+            { id: 'step-1', title: 'Solve problems 1-5', completed: true },
+            { id: 'step-2', title: 'Solve problems 6-10', completed: false },
+          ],
         });
 
       expect(res.status).toBe(201);
       expect(res.body.assignment.title).toBe('Derivatives Problem Set');
       expect(res.body.assignment.priority).toBe('HIGH');
-      expect(res.body.assignment.status).toBe('NOT_STARTED');
+      expect(res.body.assignment.notes).toBe('Office hours on Thursday at 2pm');
+      expect(res.body.assignment.subtasks).toBeDefined();
       assignmentAId = res.body.assignment.id;
+    });
+
+    it('PATCH /api/assignments/:id/subtasks/:subtaskId/toggle updates subtask status', async () => {
+      const res = await request(app)
+        .patch(`/api/assignments/${assignmentAId}/subtasks/step-2/toggle`)
+        .set('Authorization', `Bearer ${userAToken}`);
+
+      expect(res.status).toBe(200);
+      const subtasks = JSON.parse(res.body.assignment.subtasks);
+      const step2 = subtasks.find((s: any) => s.id === 'step-2');
+      expect(step2.completed).toBe(true);
+      // Because both step 1 and step 2 are now completed, parent status auto-completes!
+      expect(res.body.assignment.status).toBe('COMPLETED');
     });
 
     it('User B cannot create an assignment with User A course', async () => {
@@ -222,7 +263,7 @@ describe('Student Productivity App API Integration Tests', () => {
 
     it('GET /api/assignments supports search, filter by status, and priority', async () => {
       const res = await request(app)
-        .get('/api/assignments?search=Derivatives&priority=HIGH&status=NOT_STARTED')
+        .get('/api/assignments?search=Derivatives&priority=HIGH')
         .set('Authorization', `Bearer ${userAToken}`);
 
       expect(res.status).toBe(200);

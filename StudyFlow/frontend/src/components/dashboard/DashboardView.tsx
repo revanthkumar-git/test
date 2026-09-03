@@ -4,14 +4,18 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  BookOpen,
   ArrowRight,
   Plus,
   Flame,
   Check,
+  GraduationCap,
+  Target,
+  Edit3,
+  ListChecks,
 } from 'lucide-react';
-import { DashboardSummary, Assignment, Course } from '../../types';
+import { DashboardSummary, Assignment, Course, Subtask } from '../../types';
 import { getCourseIcon } from '../../utils/courseIcons';
+import { useAuth } from '../../context/AuthContext';
 import { EmptyState, LoadingSpinner } from '../common/LoadingAndEmpty';
 
 interface DashboardViewProps {
@@ -19,6 +23,7 @@ interface DashboardViewProps {
   loading: boolean;
   onSelectAssignment: (a: Assignment) => void;
   onOpenCreateAssignment: () => void;
+  onOpenProfile: () => void;
   onNavigateTab: (tab: any) => void;
   onToggleStatus: (a: Assignment) => void;
 }
@@ -28,14 +33,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   loading,
   onSelectAssignment,
   onOpenCreateAssignment,
+  onOpenProfile,
   onNavigateTab,
   onToggleStatus,
 }) => {
+  const { user } = useAuth();
+
   if (loading || !summary) {
-    return <LoadingSpinner label="Loading dashboard insights..." />;
+    return <LoadingSpinner label="Loading personalized dashboard..." />;
   }
 
   const { metrics, overdueAssignments, upcomingAssignments, courseBreakdown } = summary;
+
+  // Time of day greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
 
   const getPriorityBadge = (p: string) => {
     switch (p) {
@@ -60,25 +76,68 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
+  const parseSubtasks = (json?: string | null): Subtask[] => {
+    if (!json) return [];
+    try {
+      const parsed = JSON.parse(json);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Top Welcome & Quick Action */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Academic Dashboard
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Stay on top of deadlines, study schedules, and coursework progress.
-          </p>
+      {/* Personalized Student Welcome Banner */}
+      <div className="relative overflow-hidden rounded-3xl border border-brand-200/80 dark:border-brand-900/60 bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-700 p-6 sm:p-8 text-white shadow-xl shadow-brand-500/15">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold text-white">
+                <GraduationCap className="w-3.5 h-3.5" />
+                <span>{user?.university || 'Academic Workspace'}</span>
+              </span>
+              {user?.major && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs text-indigo-100">
+                  {user.major}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-400/25 border border-amber-300/30 text-xs font-bold text-amber-200">
+                <Flame className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <span>{user?.streakDays || 1} Day Streak</span>
+              </span>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              {getGreeting()}, {user?.name || 'Student'}! ✨
+            </h1>
+
+            {user?.studyGoal && (
+              <p className="flex items-center gap-1.5 text-xs sm:text-sm text-indigo-100 max-w-xl">
+                <Target className="w-4 h-4 text-amber-300 shrink-0" />
+                <span className="font-medium">Goal: {user.studyGoal}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Quick Actions */}
+          <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+            <button
+              onClick={onOpenProfile}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 backdrop-blur-md text-xs font-semibold text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Edit Profile & Goals</span>
+            </button>
+            <button
+              onClick={onOpenCreateAssignment}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-brand-700 hover:bg-slate-100 text-xs font-bold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New Assignment</span>
+            </button>
+          </div>
         </div>
-        <button
-          onClick={onOpenCreateAssignment}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-md shadow-brand-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Assignment</span>
-        </button>
       </div>
 
       {/* Overdue Warning Alert Banner */}
@@ -94,7 +153,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   Attention: {metrics.overdue} assignment{metrics.overdue > 1 ? 's are' : ' is'} overdue!
                 </h3>
                 <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5 leading-relaxed">
-                  Review and submit these tasks promptly to prevent late penalties and maintain course grades.
+                  Review and submit these tasks promptly to prevent late penalties.
                 </p>
               </div>
             </div>
@@ -108,7 +167,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* 4 Core Summary Metric Cards */}
+      {/* 4 Summary Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Active */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
@@ -177,7 +236,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Main Grid: Overdue & Upcoming */}
+      {/* Main Grid: Overdue & Upcoming with Subtask Progress */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Overdue Assignments Section */}
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs">
@@ -201,41 +260,62 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="space-y-2.5">
               {overdueAssignments.map((a) => {
                 const IconComponent = getCourseIcon(a.course.icon);
+                const subtasks = parseSubtasks(a.subtasks);
+                const completedSubtasks = subtasks.filter((s) => s.completed).length;
+
                 return (
                   <div
                     key={a.id}
-                    className="flex items-center justify-between p-3 rounded-xl border border-rose-100 dark:border-rose-950/60 bg-rose-50/30 dark:bg-rose-950/10 hover:border-rose-300 dark:hover:border-rose-800 transition-all group"
+                    className="flex flex-col gap-2 p-3 rounded-xl border border-rose-100 dark:border-rose-950/60 bg-rose-50/30 dark:bg-rose-950/10 hover:border-rose-300 dark:hover:border-rose-800 transition-all group"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <button
-                        onClick={() => onToggleStatus(a)}
-                        className="w-5 h-5 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-emerald-500 flex items-center justify-center shrink-0 transition-colors"
-                        title="Mark Complete"
-                      >
-                        {a.status === 'COMPLETED' && <Check className="w-3.5 h-3.5 text-emerald-500" />}
-                      </button>
-                      <div
-                        className="cursor-pointer min-w-0"
-                        onClick={() => onSelectAssignment(a)}
-                      >
-                        <p className="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors truncate">
-                          {a.title}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span
-                            className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded"
-                            style={{ backgroundColor: `${a.course.color}20`, color: a.course.color }}
-                          >
-                            <IconComponent className="w-2.5 h-2.5" />
-                            {a.course.code || a.course.name}
-                          </span>
-                          <span className="text-[10px] text-rose-500 font-semibold">
-                            Due {new Date(a.dueDate).toLocaleDateString()}
-                          </span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <button
+                          onClick={() => onToggleStatus(a)}
+                          className="w-5 h-5 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-emerald-500 flex items-center justify-center shrink-0 transition-colors"
+                          title="Mark Complete"
+                        >
+                          {a.status === 'COMPLETED' && <Check className="w-3.5 h-3.5 text-emerald-500" />}
+                        </button>
+                        <div
+                          className="cursor-pointer min-w-0"
+                          onClick={() => onSelectAssignment(a)}
+                        >
+                          <p className="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors truncate">
+                            {a.title}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded"
+                              style={{ backgroundColor: `${a.course.color}20`, color: a.course.color }}
+                            >
+                              <IconComponent className="w-2.5 h-2.5" />
+                              {a.course.code || a.course.name}
+                            </span>
+                            <span className="text-[10px] text-rose-500 font-semibold">
+                              Due {new Date(a.dueDate).toLocaleDateString()}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      <div>{getPriorityBadge(a.priority)}</div>
                     </div>
-                    <div>{getPriorityBadge(a.priority)}</div>
+
+                    {/* Subtask checklist progress preview */}
+                    {subtasks.length > 0 && (
+                      <div className="flex items-center gap-2 pt-1 border-t border-rose-100 dark:border-rose-950/40 text-[10px] text-slate-500 dark:text-slate-400">
+                        <ListChecks className="w-3 h-3 text-brand-600" />
+                        <span>
+                          {completedSubtasks}/{subtasks.length} milestones complete
+                        </span>
+                        <div className="flex-1 h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-500 rounded-full"
+                            style={{ width: `${(completedSubtasks / subtasks.length) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -266,51 +346,70 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="space-y-2.5">
               {upcomingAssignments.slice(0, 6).map((a) => {
                 const IconComponent = getCourseIcon(a.course.icon);
+                const subtasks = parseSubtasks(a.subtasks);
+                const completedSubtasks = subtasks.filter((s) => s.completed).length;
                 const isDueSoon =
                   new Date(a.dueDate).getTime() - Date.now() < 3 * 24 * 60 * 60 * 1000;
+
                 return (
                   <div
                     key={a.id}
-                    className="flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-brand-200 dark:hover:border-brand-800 transition-all group"
+                    className="flex flex-col gap-2 p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-brand-200 dark:hover:border-brand-800 transition-all group"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <button
-                        onClick={() => onToggleStatus(a)}
-                        className="w-5 h-5 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-emerald-500 flex items-center justify-center shrink-0 transition-colors"
-                        title="Mark Complete"
-                      >
-                        {a.status === 'COMPLETED' && <Check className="w-3.5 h-3.5 text-emerald-500" />}
-                      </button>
-                      <div
-                        className="cursor-pointer min-w-0"
-                        onClick={() => onSelectAssignment(a)}
-                      >
-                        <p className="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors truncate">
-                          {a.title}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span
-                            className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded"
-                            style={{ backgroundColor: `${a.course.color}20`, color: a.course.color }}
-                          >
-                            <IconComponent className="w-2.5 h-2.5" />
-                            {a.course.code || a.course.name}
-                          </span>
-                          <span
-                            className={`text-[10px] ${
-                              isDueSoon
-                                ? 'text-amber-600 dark:text-amber-400 font-semibold'
-                                : 'text-slate-400'
-                            }`}
-                          >
-                            Due {new Date(a.dueDate).toLocaleDateString()}
-                          </span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <button
+                          onClick={() => onToggleStatus(a)}
+                          className="w-5 h-5 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-emerald-500 flex items-center justify-center shrink-0 transition-colors"
+                          title="Mark Complete"
+                        >
+                          {a.status === 'COMPLETED' && <Check className="w-3.5 h-3.5 text-emerald-500" />}
+                        </button>
+                        <div
+                          className="cursor-pointer min-w-0"
+                          onClick={() => onSelectAssignment(a)}
+                        >
+                          <p className="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors truncate">
+                            {a.title}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded"
+                              style={{ backgroundColor: `${a.course.color}20`, color: a.course.color }}
+                            >
+                              <IconComponent className="w-2.5 h-2.5" />
+                              {a.course.code || a.course.name}
+                            </span>
+                            <span
+                              className={`text-[10px] ${
+                                isDueSoon
+                                  ? 'text-amber-600 dark:text-amber-400 font-semibold'
+                                  : 'text-slate-400'
+                              }`}
+                            >
+                              Due {new Date(a.dueDate).toLocaleDateString()}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      <div>{getPriorityBadge(a.priority)}</div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {getPriorityBadge(a.priority)}
-                    </div>
+
+                    {/* Subtask checklist progress preview */}
+                    {subtasks.length > 0 && (
+                      <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800/60 text-[10px] text-slate-500 dark:text-slate-400">
+                        <ListChecks className="w-3 h-3 text-brand-600" />
+                        <span>
+                          {completedSubtasks}/{subtasks.length} milestones complete
+                        </span>
+                        <div className="flex-1 h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-500 rounded-full"
+                            style={{ width: `${(completedSubtasks / subtasks.length) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -319,7 +418,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Courses Progress Breakdown */}
+      {/* Coursework Progress Breakdown */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold text-slate-900 dark:text-white">
@@ -368,7 +467,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </h4>
                     <p className="text-[11px] text-slate-400">{c.code || 'Course'}</p>
                   </div>
-                  {/* Progress Bar */}
                   <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-500"

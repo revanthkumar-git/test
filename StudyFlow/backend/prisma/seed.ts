@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting database seed...');
+  console.log('🌱 Starting database seed with personalized student data...');
 
   // Clean up existing demo data
   const existingUser = await prisma.user.findUnique({
@@ -18,7 +18,7 @@ async function main() {
     });
   }
 
-  // Create demo student
+  // Create demo student with personalized profile
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash('password123', salt);
 
@@ -27,10 +27,16 @@ async function main() {
       email: 'student@university.edu',
       name: 'Alex Morgan',
       passwordHash,
+      university: 'Stanford University',
+      major: 'B.S. Computer Science & AI',
+      semester: 'Junior - Fall 2026',
+      studyGoal: 'Submit all assignments 24 hours before deadlines',
+      avatarColor: '#6366F1',
+      streakDays: 5,
     },
   });
 
-  console.log(`👤 Created demo student: ${user.email} (Password: password123)`);
+  console.log(`👤 Created demo student: ${user.name} (${user.email}) at ${user.university}`);
 
   // Create Courses
   const cs201 = await prisma.course.create({
@@ -39,7 +45,7 @@ async function main() {
       name: 'Data Structures & Algorithms',
       code: 'CS201',
       instructor: 'Prof. Ada Lovelace',
-      color: '#3B82F6', // Blue
+      color: '#3B82F6',
       icon: 'code',
     },
   });
@@ -50,7 +56,7 @@ async function main() {
       name: 'Linear Algebra & Differential Equations',
       code: 'MATH240',
       instructor: 'Dr. Alan Turing',
-      color: '#8B5CF6', // Purple
+      color: '#8B5CF6',
       icon: 'calculator',
     },
   });
@@ -61,7 +67,7 @@ async function main() {
       name: 'Modern Physics & Quantum Mechanics',
       code: 'PHYS150',
       instructor: 'Dr. Richard Feynman',
-      color: '#EC4899', // Pink
+      color: '#EC4899',
       icon: 'flask',
     },
   });
@@ -72,7 +78,7 @@ async function main() {
       name: 'Cloud & Web Architecture',
       code: 'CS350',
       instructor: 'Prof. Tim Berners-Lee',
-      color: '#10B981', // Emerald
+      color: '#10B981',
       icon: 'globe',
     },
   });
@@ -81,7 +87,6 @@ async function main() {
 
   const now = new Date();
 
-  // Helper to create dates offset from today
   const addDays = (days: number, hours = 23, minutes = 59): Date => {
     const d = new Date(now);
     d.setDate(d.getDate() + days);
@@ -89,7 +94,7 @@ async function main() {
     return d;
   };
 
-  // Seed Assignments
+  // Seed Assignments with Subtask Checklists & Notes
   const assignmentsData = [
     // --- OVERDUE ASSIGNMENTS ---
     {
@@ -101,6 +106,14 @@ async function main() {
       priority: 'HIGH',
       status: 'IN_PROGRESS',
       isRecurring: false,
+      notes: 'Check theorem 4.7 for algebraic vs geometric multiplicity. Review recitation notes.',
+      tags: 'Homework,Math',
+      subtasks: JSON.stringify([
+        { id: 'sub-1', title: 'Compute characteristic polynomial for problems 4.1-4.3', completed: true },
+        { id: 'sub-2', title: 'Find eigenvalues and solve for eigenspaces', completed: true },
+        { id: 'sub-3', title: 'Diagonalize matrix and compute powers A^k', completed: false },
+        { id: 'sub-4', title: 'Typeset solutions in LaTeX and export PDF', completed: false },
+      ]),
     },
     {
       userId: user.id,
@@ -111,6 +124,13 @@ async function main() {
       priority: 'MEDIUM',
       status: 'NOT_STARTED',
       isRecurring: false,
+      notes: 'Remember to calculate standard error and uncertainty bounds.',
+      tags: 'Lab,Physics',
+      subtasks: JSON.stringify([
+        { id: 'sub-5', title: 'Plot stopping voltage vs frequency in Python/Excel', completed: true },
+        { id: 'sub-6', title: 'Determine slope and calculate Planck constant h', completed: false },
+        { id: 'sub-7', title: 'Write error analysis and discussion section', completed: false },
+      ]),
     },
 
     // --- UPCOMING THIS WEEK ---
@@ -123,6 +143,15 @@ async function main() {
       priority: 'HIGH',
       status: 'IN_PROGRESS',
       isRecurring: false,
+      notes: 'Handle case 2 (uncle is red) and case 3 (uncle is black). Ask TA about memory leaks in valgrind.',
+      tags: 'Project,Algorithms,C++',
+      subtasks: JSON.stringify([
+        { id: 'sub-8', title: 'Review Red-Black tree properties & invariant proofs', completed: true },
+        { id: 'sub-9', title: 'Implement binary search tree primitive operations', completed: true },
+        { id: 'sub-10', title: 'Implement left_rotate and right_rotate helpers', completed: true },
+        { id: 'sub-11', title: 'Implement insert_fixup balancing cases', completed: false },
+        { id: 'sub-12', title: 'Benchmark execution speed on 100k random keys', completed: false },
+      ]),
     },
     {
       userId: user.id,
@@ -133,6 +162,13 @@ async function main() {
       priority: 'MEDIUM',
       status: 'NOT_STARTED',
       isRecurring: false,
+      notes: 'Follow JSON API conventions and RFC 7807 problem details.',
+      tags: 'Architecture,Spec',
+      subtasks: JSON.stringify([
+        { id: 'sub-13', title: 'Define Auth and User schema models', completed: true },
+        { id: 'sub-14', title: 'Draft Course and Assignment endpoints specification', completed: false },
+        { id: 'sub-15', title: 'Validate OpenAPI 3.0 YAML in Swagger Editor', completed: false },
+      ]),
     },
     {
       userId: user.id,
@@ -144,6 +180,12 @@ async function main() {
       status: 'NOT_STARTED',
       isRecurring: true,
       recurrenceRule: 'WEEKLY',
+      notes: 'Quiz is timed: 30 minutes, 15 multiple choice questions.',
+      tags: 'Quiz,Weekly',
+      subtasks: JSON.stringify([
+        { id: 'sub-16', title: 'Re-read lecture 9 summary notes', completed: false },
+        { id: 'sub-17', title: 'Solve 5 practice quiz problems', completed: false },
+      ]),
     },
     {
       userId: user.id,
@@ -154,6 +196,13 @@ async function main() {
       priority: 'HIGH',
       status: 'IN_PROGRESS',
       isRecurring: false,
+      notes: 'Check commutator relation [a, a_dagger] = 1.',
+      tags: 'Theory,Quantum',
+      subtasks: JSON.stringify([
+        { id: 'sub-18', title: 'Derive commutation relation for ladder operators', completed: true },
+        { id: 'sub-19', title: 'Calculate zero-point ground state energy E_0', completed: true },
+        { id: 'sub-20', title: 'Plot wavefunctions psi_0 through psi_3', completed: false },
+      ]),
     },
 
     // --- UPCOMING NEXT WEEK & BEYOND ---
@@ -161,11 +210,18 @@ async function main() {
       userId: user.id,
       courseId: cs350.id,
       title: 'Dockerizing Full-Stack Microservices Project',
-      description: 'Create multi-stage Dockerfile and docker-compose configuration for frontend, backend, and PostgreSQL database.',
+      description: 'Create multi-stage Dockerfile and docker-compose configuration for frontend, backend, and database.',
       dueDate: addDays(8, 23, 59),
       priority: 'HIGH',
       status: 'NOT_STARTED',
       isRecurring: false,
+      notes: 'Use alpine base images to minimize image footprint.',
+      tags: 'DevOps,Docker',
+      subtasks: JSON.stringify([
+        { id: 'sub-21', title: 'Write backend Dockerfile with multi-stage build', completed: false },
+        { id: 'sub-22', title: 'Write frontend Dockerfile with Vite production bundle', completed: false },
+        { id: 'sub-23', title: 'Configure docker-compose.yml with network bridge', completed: false },
+      ]),
     },
     {
       userId: user.id,
@@ -176,6 +232,8 @@ async function main() {
       priority: 'MEDIUM',
       status: 'NOT_STARTED',
       isRecurring: false,
+      tags: 'Algorithms,Benchmark',
+      subtasks: null,
     },
     {
       userId: user.id,
@@ -186,6 +244,8 @@ async function main() {
       priority: 'MEDIUM',
       status: 'NOT_STARTED',
       isRecurring: false,
+      tags: 'Exam,Midterm',
+      subtasks: null,
     },
 
     // --- COMPLETED ASSIGNMENTS ---
@@ -199,6 +259,12 @@ async function main() {
       status: 'COMPLETED',
       completedAt: addDays(-8, 14, 30),
       isRecurring: false,
+      tags: 'Algorithms,Homework',
+      subtasks: JSON.stringify([
+        { id: 'sub-24', title: 'Prove geometric doubling amortized O(1) bound', completed: true },
+        { id: 'sub-25', title: 'Implement Vector class with dynamic resize', completed: true },
+        { id: 'sub-26', title: 'Submit code to grading auto-checker', completed: true },
+      ]),
     },
     {
       userId: user.id,
@@ -210,6 +276,8 @@ async function main() {
       status: 'COMPLETED',
       completedAt: addDays(-11, 16, 0),
       isRecurring: false,
+      tags: 'Safety,Lab',
+      subtasks: null,
     },
     {
       userId: user.id,
@@ -221,6 +289,8 @@ async function main() {
       status: 'COMPLETED',
       completedAt: addDays(-12, 11, 15),
       isRecurring: false,
+      tags: 'Setup,Git',
+      subtasks: null,
     },
   ];
 
@@ -230,7 +300,7 @@ async function main() {
     });
   }
 
-  console.log(`✅ Seeded ${assignmentsData.length} assignments successfully!`);
+  console.log(`✅ Seeded ${assignmentsData.length} personalized assignments successfully!`);
 }
 
 main()

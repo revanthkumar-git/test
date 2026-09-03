@@ -9,11 +9,24 @@ export const registerSchema = z.object({
   email: z.string().email('Please enter a valid email address').toLowerCase().trim(),
   password: z.string().min(6, 'Password must be at least 6 characters long'),
   name: z.string().min(1, 'Name is required').trim(),
+  university: z.string().trim().optional(),
+  major: z.string().trim().optional(),
+  semester: z.string().trim().optional(),
+  studyGoal: z.string().trim().optional(),
 });
 
 export const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address').toLowerCase().trim(),
   password: z.string().min(1, 'Password is required'),
+});
+
+export const updateProfileSchema = z.object({
+  name: z.string().min(1, 'Name cannot be empty').trim().optional(),
+  university: z.string().trim().optional().nullable(),
+  major: z.string().trim().optional().nullable(),
+  semester: z.string().trim().optional().nullable(),
+  studyGoal: z.string().trim().optional().nullable(),
+  avatarColor: z.string().regex(/^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$/, 'Invalid color').optional(),
 });
 
 const generateToken = (user: { id: string; email: string; name: string }): string => {
@@ -28,7 +41,7 @@ const generateToken = (user: { id: string; email: string; name: string }): strin
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, university, major, semester, studyGoal } = req.body;
 
     const existingUser = await prisma.user.findUnique({
       where: { email },
@@ -50,11 +63,23 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         email,
         passwordHash,
         name,
+        university: university || null,
+        major: major || null,
+        semester: semester || null,
+        studyGoal: studyGoal || null,
+        avatarColor: '#6366F1',
+        streakDays: 1,
       },
       select: {
         id: true,
         email: true,
         name: true,
+        university: true,
+        major: true,
+        semester: true,
+        studyGoal: true,
+        avatarColor: true,
+        streakDays: true,
         createdAt: true,
       },
     });
@@ -101,6 +126,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       id: user.id,
       email: user.email,
       name: user.name,
+      university: user.university,
+      major: user.major,
+      semester: user.semester,
+      studyGoal: user.studyGoal,
+      avatarColor: user.avatarColor,
+      streakDays: user.streakDays,
       createdAt: user.createdAt,
     };
 
@@ -130,6 +161,12 @@ export const getMe = async (req: AuthenticatedRequest, res: Response): Promise<v
         id: true,
         email: true,
         name: true,
+        university: true,
+        major: true,
+        semester: true,
+        studyGoal: true,
+        avatarColor: true,
+        streakDays: true,
         createdAt: true,
       },
     });
@@ -143,5 +180,44 @@ export const getMe = async (req: AuthenticatedRequest, res: Response): Promise<v
   } catch (error) {
     console.error('GetMe error:', error);
     res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+export const updateProfile = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { name, university, major, semester, studyGoal, avatarColor } = req.body;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(university !== undefined && { university }),
+        ...(major !== undefined && { major }),
+        ...(semester !== undefined && { semester }),
+        ...(studyGoal !== undefined && { studyGoal }),
+        ...(avatarColor !== undefined && { avatarColor }),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        university: true,
+        major: true,
+        semester: true,
+        studyGoal: true,
+        avatarColor: true,
+        streakDays: true,
+        createdAt: true,
+      },
+    });
+
+    res.status(200).json({
+      message: 'Profile updated successfully',
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error('updateProfile error:', error);
+    res.status(500).json({ error: 'Internal Server Error', message: 'Failed to update profile.' });
   }
 };

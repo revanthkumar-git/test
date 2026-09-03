@@ -8,7 +8,23 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: { email: string; password: string }) => Promise<void>;
-  register: (data: { email: string; password: string; name: string }) => Promise<void>;
+  register: (data: {
+    email: string;
+    password: string;
+    name: string;
+    university?: string;
+    major?: string;
+    semester?: string;
+    studyGoal?: string;
+  }) => Promise<void>;
+  updateProfile: (data: {
+    name?: string;
+    university?: string | null;
+    major?: string | null;
+    semester?: string | null;
+    studyGoal?: string | null;
+    avatarColor?: string;
+  }) => Promise<void>;
   logout: () => void;
 }
 
@@ -67,7 +83,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (data: { email: string; password: string; name: string }) => {
+  const register = async (data: {
+    email: string;
+    password: string;
+    name: string;
+    university?: string;
+    major?: string;
+    semester?: string;
+    studyGoal?: string;
+  }) => {
     setIsLoading(true);
     try {
       const res = await authApi.register(data);
@@ -77,6 +101,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const updateProfile = async (data: {
+    name?: string;
+    university?: string | null;
+    major?: string | null;
+    semester?: string | null;
+    studyGoal?: string | null;
+    avatarColor?: string;
+  }) => {
+    const res = await authApi.updateProfile(data);
+    setUser(res.user);
   };
 
   const logout = () => {
@@ -94,6 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         login,
         register,
+        updateProfile,
         logout,
       }}
     >
